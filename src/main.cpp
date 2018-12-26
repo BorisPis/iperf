@@ -71,6 +71,8 @@
 #include "List.h"
 #include "util.h"
 
+#include <openssl/conf.h>
+
 #ifdef WIN32
 #include "service.h"
 #endif 
@@ -121,6 +123,9 @@ void waitUntilQuit( void );
  * ------------------------------------------------------------------- */
 int main( int argc, char **argv ) {
 
+    //load openssl.cnf file
+    OPENSSL_config(NULL);
+    
     // Set SIGTERM and SIGINT to call our user interrupt function
     my_signal( SIGTERM, Sig_Interupt );
     my_signal( SIGINT,  Sig_Interupt );

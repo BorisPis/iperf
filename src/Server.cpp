@@ -226,7 +226,7 @@ void Server::Run( void ) {
             }
 #else
             // perform read
-            if (!isSSL(mSettings))
+            if (!isSSL(mSettings) || isNODECRYPT(mSettings))
         		currLen = recv( mSettings->mSock, mBuf, mSettings->mBufLen, 0 );
             else
         	    	currLen = SSL_read(conn, mBuf, mSettings->mBufLen);

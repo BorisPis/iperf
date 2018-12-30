@@ -125,6 +125,7 @@ const struct option long_options[] =
 {"linux-congestion", required_argument, NULL, 'Z'},
 {"tls", no_argument, NULL, 'E'},
 {"ktls", no_argument, NULL, 'K'},
+{"no_decrypt", no_argument, NULL, 'X'},
 {0, 0, 0, 0}
 };
 
@@ -635,8 +636,11 @@ void Settings_Interpret( char option, const char *optarg, thread_Settings *mExtS
         case 'E': // Use SSL
             setSSL( mExtSettings );
             break;
-
-        case 'F' : // Get the input for the data stream from a file
+        case 'X': // Use SSL
+            setNODECRYPT( mExtSettings );
+            break;
+        
+	case 'F' : // Get the input for the data stream from a file
             if ( mExtSettings->mThreadMode != kMode_Client ) {
                 fprintf( stderr, warn_invalid_server_option, option );
                 break;

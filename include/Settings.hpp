@@ -231,6 +231,7 @@ typedef struct thread_Settings {
 #define FLAG_ENHANCEDREPORT 0x02000000
 #define FLAG_SSL	    0x04000000
 #define FLAG_KTLS	    0x08000000
+#define FLAG_NODECRYPT	    0x10000000
 
 #define isBuflenSet(settings)      ((settings->flags & FLAG_BUFLENSET) != 0)
 #define isCompat(settings)         ((settings->flags & FLAG_COMPAT) != 0)
@@ -262,6 +263,7 @@ typedef struct thread_Settings {
 #define isEnhanced(settings)    ((settings->flags & FLAG_ENHANCEDREPORT) != 0)
 #define isSSL(settings)    	((settings->flags & FLAG_SSL) != 0)
 #define isKTLS(settings)    	((settings->flags & FLAG_KTLS) != 0)
+#define isNODECRYPT(settings)    	((settings->flags & FLAG_NODECRYPT) != 0)
 
 #define setBuflenSet(settings)     settings->flags |= FLAG_BUFLENSET
 #define setCompat(settings)        settings->flags |= FLAG_COMPAT
@@ -291,6 +293,7 @@ typedef struct thread_Settings {
 #define setEnhanced(settings)      settings->flags |= FLAG_ENHANCEDREPORT
 #define setSSL(settings)           settings->flags |= FLAG_SSL
 #define setKTLS(settings)           settings->flags |= FLAG_KTLS
+#define setNODECRYPT(settings)           settings->flags |= FLAG_NODECRYPT
 
 #define unsetBuflenSet(settings)   settings->flags &= ~FLAG_BUFLENSET
 #define unsetCompat(settings)      settings->flags &= ~FLAG_COMPAT

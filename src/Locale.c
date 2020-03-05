@@ -100,6 +100,7 @@ Server specific:\n\
 #ifdef WIN32
 "  -R, --remove             remove service in win32\n"
 #endif
+"  -X, --nodecrypt         TLS handshake with followed by no decryption on receiver\n"
 ;
 
 const char usage_long2[] = "\

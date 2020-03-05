@@ -114,10 +114,16 @@ void Server::Run( void ) {
     SSL *conn = NULL;
 
     if (isSSL(mSettings)) {
-	    conn = SSL_new(mSettings->ssl_ctx);
-	    SSL_set_fd(conn, mSettings->mSock);
-	    if ( SSL_accept(conn) == -1 )					/* do SSL-protocol accept */
-		ERR_print_errors_fp(stderr);
+        conn = SSL_new(mSettings->ssl_ctx);
+        SSL_set_fd(conn, mSettings->mSock);
+        if (isNODECRYPT(mSettings)) {
+            if (!SSL_set_mode(conn, SSL_MODE_NO_KTLS_RX)) {
+                printf("error no ktls rx\n");
+                return;
+            }
+        }
+        if ( SSL_accept(conn) == -1 )                    /* do SSL-protocol accept */
+            ERR_print_errors_fp(stderr);
     }
 
 #undef HAVE_DECL_SO_TIMESTAMP
@@ -143,140 +149,141 @@ void Server::Run( void ) {
     if ( reportstruct != NULL ) {
         reportstruct->packetID = 0;
         mSettings->reporthdr = InitReport( mSettings );
-	running=1;
-	// Set the socket timeout to 1/2 the report interval
-	if (mSettings->mInterval) {
+    running=1;
+    // Set the socket timeout to 1/2 the report interval
+    if (mSettings->mInterval) {
 #ifdef WIN32
-	  // Windows SO_RCVTIMEO uses ms
-	    DWORD timeout;
-	    timeout = (mSettings->mInterval / 2.0) * 1e3;
+      // Windows SO_RCVTIMEO uses ms
+        DWORD timeout;
+        timeout = (mSettings->mInterval / 2.0) * 1e3;
 #else
-	  // Linux SO_RCVTIMEO uses timeval
-	    struct timeval timeout;
-	    double intpart, fractpart, half;
-	    half = mSettings->mInterval / 2;
-	    fractpart = modf(half, &intpart);
-	    timeout.tv_sec = (int) (intpart);
-	    timeout.tv_usec = (int) (fractpart * 1e6);
+      // Linux SO_RCVTIMEO uses timeval
+        struct timeval timeout;
+        double intpart, fractpart, half;
+        half = mSettings->mInterval / 2;
+        fractpart = modf(half, &intpart);
+        timeout.tv_sec = (int) (intpart);
+        timeout.tv_usec = (int) (fractpart * 1e6);
 #endif
-	    if (setsockopt( mSettings->mSock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0 ) {
-		WARN_errno( mSettings->mSock == SO_RCVTIMEO, "socket" );
-	    }
-	}
+        if (setsockopt( mSettings->mSock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0 ) {
+        WARN_errno( mSettings->mSock == SO_RCVTIMEO, "socket" );
+        }
+    }
 #if HAVE_DECL_SO_TIMESTAMP
         if ( isUDP( mSettings ) ) {
-	    int timestampOn = 1;
-	    if (setsockopt(mSettings->mSock, SOL_SOCKET, SO_TIMESTAMP, (int *) &timestampOn, sizeof(timestampOn)) < 0) {
-		WARN_errno( mSettings->mSock == SO_TIMESTAMP, "socket" );
-	    }
-	}
+        int timestampOn = 1;
+        if (setsockopt(mSettings->mSock, SOL_SOCKET, SO_TIMESTAMP, (int *) &timestampOn, sizeof(timestampOn)) < 0) {
+        WARN_errno( mSettings->mSock == SO_TIMESTAMP, "socket" );
+        }
+    }
 #endif
 #ifdef HAVE_SCHED_SETSCHEDULER
-	if ( isRealtime( mSettings ) ) {
-	    struct sched_param sp;
-	    sp.sched_priority = sched_get_priority_max(SCHED_RR); 
-	    // SCHED_OTHER, SCHED_FIFO, SCHED_RR
-	    if (sched_setscheduler(0, SCHED_RR, &sp) < 0)  {
-		perror("Client set scheduler");
+    if ( isRealtime( mSettings ) ) {
+        struct sched_param sp;
+        sp.sched_priority = sched_get_priority_max(SCHED_RR); 
+        // SCHED_OTHER, SCHED_FIFO, SCHED_RR
+        if (sched_setscheduler(0, SCHED_RR, &sp) < 0)  {
+        perror("Client set scheduler");
 #ifdef HAVE_MLOCKALL
-	    } else if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) { 
-		// lock the threads memory
-		perror ("mlockall");
+        } else if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) { 
+        // lock the threads memory
+        perror ("mlockall");
 #endif
-	    }
-	}
+        }
+    }
 #endif
-	gettimeofday( &watchdog, NULL );
+    gettimeofday( &watchdog, NULL );
         do {
-	    reportstruct->emptyreport=0;
+        reportstruct->emptyreport=0;
 #if HAVE_DECL_SO_TIMESTAMP
             // perform read 
             currLen = recvmsg( mSettings->mSock, &message, 0 );
-	    if (currLen <= 0) {
-		// Socket read timeout or read error
-		reportstruct->emptyreport=1;
-		gettimeofday( &(reportstruct->packetTime), NULL );
+        if (currLen <= 0) {
+        // Socket read timeout or read error
+        reportstruct->emptyreport=1;
+        gettimeofday( &(reportstruct->packetTime), NULL );
                 // End loop on 0 read or socket error
-		// except for socket read timeout
-		if (currLen == 0 || (TimeDifference(reportstruct->packetTime, watchdog) > (mSettings->mAmount / 100)) ||
+        // except for socket read timeout
+        if (currLen == 0 || (TimeDifference(reportstruct->packetTime, watchdog) > (mSettings->mAmount / 100)) ||
 #ifdef WIN32
-		    (WSAGetLastError() != WSAEWOULDBLOCK)
+            (WSAGetLastError() != WSAEWOULDBLOCK)
 #else
-		    (errno != EAGAIN && errno != EWOULDBLOCK)
-#endif		     
-		    ) {
-		    running = 0;
-		}
-		currLen=0;
-	    }
+            (errno != EAGAIN && errno != EWOULDBLOCK)
+#endif             
+            ) {
+            running = 0;
+        }
+        currLen=0;
+        }
 
             if (!reportstruct->emptyreport && isUDP( mSettings ) ) {
                 // read the datagram ID and sentTime out of the buffer 
                 reportstruct->packetID = ntohl( mBuf_UDP->id ); 
                 reportstruct->sentTime.tv_sec = ntohl( mBuf_UDP->tv_sec  );
                 reportstruct->sentTime.tv_usec = ntohl( mBuf_UDP->tv_usec ); 
-		reportstruct->packetLen = currLen;
-		if (cmsg->cmsg_level == SOL_SOCKET &&
-		    cmsg->cmsg_type  == SCM_TIMESTAMP &&
-		    cmsg->cmsg_len   == CMSG_LEN(sizeof(struct timeval))) {
-			memcpy(&(reportstruct->packetTime), CMSG_DATA(cmsg), sizeof(struct timeval));
-		} else {
-		    gettimeofday( &(reportstruct->packetTime), NULL );
-		}
+        reportstruct->packetLen = currLen;
+        if (cmsg->cmsg_level == SOL_SOCKET &&
+            cmsg->cmsg_type  == SCM_TIMESTAMP &&
+            cmsg->cmsg_len   == CMSG_LEN(sizeof(struct timeval))) {
+            memcpy(&(reportstruct->packetTime), CMSG_DATA(cmsg), sizeof(struct timeval));
+        } else {
+            gettimeofday( &(reportstruct->packetTime), NULL );
+        }
             }
 #else
             // perform read
-            if (!isSSL(mSettings) || isNODECRYPT(mSettings))
-        		currLen = recv( mSettings->mSock, mBuf, mSettings->mBufLen, 0 );
-            else
-        	    	currLen = SSL_read(conn, mBuf, mSettings->mBufLen);
-	    if (currLen <= 0) {
-		reportstruct->emptyreport=1;
+            if (!isSSL(mSettings) || isNODECRYPT(mSettings)) {
+                currLen = recv( mSettings->mSock, mBuf, mSettings->mBufLen, 0 );
+        } else {
+                    currLen = SSL_read(conn, mBuf, mSettings->mBufLen);
+        }
+        if (currLen <= 0) {
+        reportstruct->emptyreport=1;
                 // End loop on 0 read or socket error
-		// except for socket read timeout
-		if (currLen == 0 ||
+        // except for socket read timeout
+        if (currLen == 0 ||
 #ifdef WIN32
-		    (WSAGetLastError() != WSAEWOULDBLOCK)
+            (WSAGetLastError() != WSAEWOULDBLOCK)
 #else
-		    (errno != EAGAIN && errno != EWOULDBLOCK)
-#endif		     
-		    ) {
-		    running = 0;
-		} else {
-			if (!isSSL(mSettings))
-				printf("recv returned %ld\n", currLen);
-			else {
-				printf("SSL_read returned %ld\n", currLen);
-				ERR_print_errors_fp(stderr);
-			}
-		}
-		currLen = 0;
-	    }
+            (errno != EAGAIN && errno != EWOULDBLOCK)
+#endif             
+            ) {
+            running = 0;
+        } else {
+            if (!isSSL(mSettings))
+                printf("recv returned %ld\n", currLen);
+            else {
+                printf("SSL_read returned %ld\n", currLen);
+                ERR_print_errors_fp(stderr);
+            }
+        }
+        currLen = 0;
+        }
             if (!reportstruct->emptyreport && isUDP( mSettings ) ) {
-		gettimeofday( &(reportstruct->packetTime), NULL );
-		reportstruct->packetLen = currLen;
+        gettimeofday( &(reportstruct->packetTime), NULL );
+        reportstruct->packetLen = currLen;
                 // read the datagram ID and sentTime out of the buffer 
-		reportstruct->packetID = ntohl( mBuf_UDP->id ); 
-		reportstruct->sentTime.tv_sec = ntohl( mBuf_UDP->tv_sec  );
-		reportstruct->sentTime.tv_usec = ntohl( mBuf_UDP->tv_usec ); 
+        reportstruct->packetID = ntohl( mBuf_UDP->id ); 
+        reportstruct->sentTime.tv_sec = ntohl( mBuf_UDP->tv_sec  );
+        reportstruct->sentTime.tv_usec = ntohl( mBuf_UDP->tv_usec ); 
             }
 #endif
-	    if (currLen) {
-		watchdog = reportstruct->packetTime;
-		totLen += currLen;
-	    }
+        if (currLen) {
+        watchdog = reportstruct->packetTime;
+        totLen += currLen;
+        }
             // terminate when datagram begins with negative index 
             // the datagram ID should be correct, just negated 
             if ( reportstruct->packetID < 0 ) {
                 reportstruct->packetID = -reportstruct->packetID;
                 currLen = -1;
-		running = 0; 
+        running = 0; 
             }
 
-	    if ( isUDP (mSettings)) {
-		ReportPacket( mSettings->reporthdr, reportstruct );
+        if ( isUDP (mSettings)) {
+        ReportPacket( mSettings->reporthdr, reportstruct );
             } else {
-		// TCP case
+        // TCP case
                 reportstruct->packetLen = currLen;
                 gettimeofday( &(reportstruct->packetTime), NULL );
                 ReportPacket( mSettings->reporthdr, reportstruct );
@@ -286,12 +293,12 @@ void Server::Run( void ) {
         // stop timing 
         gettimeofday( &(reportstruct->packetTime), NULL );
         
-	if ( !isUDP (mSettings)) {
-		if(0.0 == mSettings->mInterval) {
+    if ( !isUDP (mSettings)) {
+        if(0.0 == mSettings->mInterval) {
                         reportstruct->packetLen = totLen;
                 }
-		ReportPacket( mSettings->reporthdr, reportstruct );
-	}
+        ReportPacket( mSettings->reporthdr, reportstruct );
+    }
         CloseReport( mSettings->reporthdr, reportstruct );
         
         // send a acknowledgement back only if we're NOT receiving multicast 
@@ -368,8 +375,8 @@ void Server::write_UDP_AckFIN( ) {
             hdr->vdTransit1  = htonl( (long) stats->transit.totvdTransit );
             hdr->vdTransit2  = htonl( (long) ((stats->transit.totvdTransit - (long)stats->transit.totvdTransit) * rMillion) );
             hdr->cntTransit   = htonl( stats->transit.totcntTransit );
-	    hdr->IPGcnt = htonl( (long) (stats->cntDatagrams / (stats->endTime - stats->startTime)));
-	    hdr->IPGsum = htonl(1);
+        hdr->IPGcnt = htonl( (long) (stats->cntDatagrams / (stats->endTime - stats->startTime)));
+        hdr->IPGsum = htonl(1);
         }
 
         // write data 

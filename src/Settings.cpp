@@ -125,6 +125,7 @@ const struct option long_options[] =
 {"linux-congestion", required_argument, NULL, 'Z'},
 {"tls", no_argument, NULL, 'E'},
 {"ktls", no_argument, NULL, 'K'},
+{"ktls_record_size", required_argument, NULL, 'J'},
 {"no_decrypt", no_argument, NULL, 'X'},
 {0, 0, 0, 0}
 };
@@ -707,6 +708,10 @@ void Settings_Interpret( char option, const char *optarg, thread_Settings *mExtS
 
         case 'T': // time-to-live for multicast
             mExtSettings->mTTL = atoi( optarg );
+            break;
+
+	case 'J':
+            mExtSettings->mTLSRecSize = atoi( optarg );
             break;
 
         case 'U': // single threaded UDP server

@@ -120,6 +120,7 @@ Client specific:\n\
   -Z, --linux-congestion <algo>  set TCP congestion control algorithm (Linux only)\n\
   -E, --tls                Use TLS\n\
   -K, --ktls               Use Kernel TLS\n\
+  -J, --ktls_record_size # Size of TLS record to use\n\
 \n\
 Miscellaneous:\n\
   -x, --reportexclude [CDMSV]   exclude C(connection) D(data) M(multicast) S(settings) V(server) reports\n\

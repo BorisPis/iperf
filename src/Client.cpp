@@ -70,6 +70,9 @@
 
 #include <openssl/ssl.h>
 
+#define SOL_TLS 282
+#define TLS_MAX_RECORD_SIZE 3
+
 /* -------------------------------------------------------------------
  * Store server hostname, optionally local hostname, and socket info.
  * ------------------------------------------------------------------- */
@@ -439,6 +442,16 @@ void Client::Run( void ) {
 	    SSL_set_fd(conn, mSettings->mSock);
 	    SSL_set_connect_state(conn);
 	    SSL_do_handshake(conn);
+    }
+
+    if (isSSL(mSettings) && isKTLS(mSettings) && mSettings->mTLSRecSize) {
+	int rc = setsockopt( mSettings->mSock, SOL_TLS,  TLS_MAX_RECORD_SIZE,
+			     &mSettings->mTLSRecSize, sizeof(mSettings->mTLSRecSize));
+	if (rc == SOCKET_ERROR ) {
+		fprintf(stderr, "Attempt to set %d record size failed: %s\n",
+			mSettings->mTLSRecSize, strerror(errno));
+		exit(1);
+	}
     }
 
     //  Enable socket write timeouts for responsive reporting

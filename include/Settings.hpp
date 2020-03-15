@@ -177,6 +177,7 @@ typedef struct thread_Settings {
     // chars
     char   mFormat;                 // -f
     int mTTL;                    // -T
+    int mTLSRecSize;                    // -J
     char pad1[2];
     // structs or miscellaneous
     iperf_sockaddr peer;

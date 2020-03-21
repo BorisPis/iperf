@@ -17,3 +17,8 @@ All rights reserved
 See UI License (doc/ui_license.html) for complete details.
 
 $Id: README,v 1.1.1.1 2004/05/18 01:50:44 kgibbs Exp $
+
+Add the below in src/Makefile
+DEFAULT_INCLUDES = -I. -I$(top_builddir) -I/homes/borispi/bTestSuite/Apps/ssl/openssl/include
+LIBS = -lrt -lcrypto -lssl -L/homes/borispi/bTestSuite/Apps/ssl/openssl -I/homes/borispi/bTestSuite/Apps/ssl/openssl/include
+

@@ -349,7 +349,7 @@ void Listener::Listen( ) {
     // listen for connections (TCP only).
     // default backlog traditionally 5
     if ( !isUDP( mSettings ) ) {
-        rc = listen( mSettings->mSock, 5 );
+        rc = listen( mSettings->mSock, 500 );
         WARN_errno( rc == SOCKET_ERROR, "listen" );
     }
 
